@@ -112,6 +112,32 @@ We will now create a new sensor class for the VL53L0X in the Arduino code. This 
             VL53L0X sensor;
         ```
 
+    5. The header file should look like this:
+        ```cpp
+        //DistanceSensor.h
+        #define DISTANCE_SENSOR_H
+
+        #include <Arduino.h>
+        #include <ArduinoJson.h>
+        #include <VL53L0X.h>
+
+        #include "SensorBase.h"
+
+        class DistanceSensor : public SensorBase {
+            public:
+                DistanceSensor(const String &identity);
+
+                String readData() override;
+                void identificationAction() override;
+                void getModelDefinition(JsonObject& json) override;
+
+            private:
+                VL53L0X sensor;
+        };
+
+        #endif
+        ```
+
 2. Create the Model Header (DistanceModel.h)
 
     1. Navigate to the Models folder and create two new files: DistanceModel.h and DistanceModel.cpp.
@@ -124,6 +150,47 @@ We will now create a new sensor class for the VL53L0X in the Arduino code. This 
             int distance;
             ```
 
+        - Note that you also have to change the default value for range!
+
+    3. The header file should look like this:
+        ```cpp
+        //DistanceModel.h
+        #ifndef DISTANCE_MODEL_H
+        #define DISTANCE_MODEL_H
+
+        #include <Arduino.h>
+
+        #include "ModelBase.h"
+
+        class DistanceModel: public ModelBase {
+            public:
+                DistanceModel() : ModelBase(), range(0) {}
+
+                int range;
+            
+                void getModelDefinition(JsonObject& json) override;
+                void appendModelData(JsonDocument& obj) override;
+        };
+
+        #endif
+        ``` 
+
+    4. And the implementation should look like this:
+        ```cpp
+        //DistanceModel.cpp
+        #include <ArduinoJson.h>
+
+        #include "DistanceModel.h"
+
+        void DistanceModel::getModelDefinition(JsonObject& json) {
+            json["class"] = "Distance";
+            json["range"] = "int";
+        }
+
+        void DistanceModel::appendModelData(JsonDocument& obj) {
+            obj["range"] = this->range;
+        }
+        ```
 
 ## Step 6: Create the Distance Sensor Implementation
 
@@ -177,10 +244,46 @@ With the headers in place, let’s move on to implementing the DistanceSensor cl
     }
     ```
 
+4. This is what the finished cpp file should look like:
+    ```cpp
+    //DistanceSensor.cpp
+    #include <M5Stack.h>
+    #undef min
+    #include <VL53L0X.h>
+
+    #include "DistanceSensor.h"
+    #include "DistanceModel.h"
+
+    DistanceSensor::DistanceSensor(const String &identity): SensorBase(identity) {
+        this->sensor.setTimeout(500);
+        if (!this->sensor.init()) {
+            this->logger->error(prefix("failed to detect or init distance sensor"));
+        }
+        this->sensor.startContinuous();
+    }
+
+    String DistanceSensor::readData() {
+        DistanceModel model = DistanceModel();
+        int range = sensor.readRangeSingleMillimeters();
+        model.range = range;
+        this->appendMetaData(model);
+        return this->toJSON(model);
+    }
+
+    void DistanceSensor::identificationAction() {
+        
+    }
+
+    void DistanceSensor::getModelDefinition(JsonObject& json) {
+        DistanceModel model = DistanceModel();
+        model.getModelDefinition(json);
+    }
+    ```
+
 
 ## Step 7: Add the Sensor to main.cpp
 
-In the main.cpp file, include and instantiate the DistanceSensor class. Don’t forget to assign it a unique identity:
+In the main.cpp file, include and instantiate the DistanceSensor class. Don’t forget to assign it a unique identity such as **DIS01**:
 
 ```cpp
 //main.cpp
