@@ -1,0 +1,6 @@
+robtillaart/CRC@^1.0.3
+pololu/VL53L0X
+m5stack/M5Stack@^0.4.6
+oxullo/MAX30100lib@^1.2.1
+adafruit/Adafruit NeoPixel@^1.12.3
+bblanchon/ArduinoJson@^7.1.0
